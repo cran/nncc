@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>nncc: nearest-neighbors matching for case-control data</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+
+
+<style type="text/css">
+  code {
+    white-space: pre;
+  }
+  .sourceCode {
+    overflow: visible;
+  }
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">nncc: nearest-neighbors matching for
+case-control data</h1>
+
+
+
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(nncc)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(survival)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">data</span>(anifood)</span></code></pre></div>
+<div id="prepare-the-data" class="section level2">
+<h2>1. Prepare the data</h2>
+<p>Case-control studies often collect many exposures but have relatively
+small sample sizes in comparison to the number of exposures.
+Conventional analysis techniques like multivariate logistic regression
+can only accommodate a limited number of exposures. The
+<code>nncc</code> package was designed to help address this limitation.
+<code>nncc</code> matches a case to its nearest available neighbors
+based on a user-defined measure of distance (by default Gower distance)
+calculated using all collected confounders for a given exposure. In the
+end, <code>nncc</code> creates a matched data set for each exposure of
+interest.</p>
+<p>Ideally, one prefers to follow the analysis plan pre-defined at study
+design. Decisions to change your analysis plan to this approach should
+be considered carefully in light of how they may affect bias and
+uncertainty in model estimates. In addition, constructing variables are
+a routine and sometimes necessary part of multifactor studies. However,
+constructing new outcome variables from primary variables will increase
+dependencies and the difficulty of interpretation, especially where
+there is missingness of data.</p>
+<p>For illustration, we created a toy example case-control data set
+called <code>anifood</code> which only contains 250 cases, 250 controls,
+and 11 variables including the one indicating case status,
+<code>case</code>, which equals 0 for controls, 1 for cases.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">dim</span>(anifood)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] 500  11</span></span></code></pre></div>
+<p>In addition to the data set, <code>nncc</code> needs to know the
+exposures of interest, the variables used for matching, and a data set
+that contains variables to be excluded from matching for each exposures
+(e.g., possible intermediates in the pathway between an exposure and
+case status).</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># exposures of interest. In a real study, this list can be much longer</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>exp_interest <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;exp01&quot;</span>,<span class="st">&quot;exp09&quot;</span>, <span class="st">&quot;exp27&quot;</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># exposures to be controlled for any exposure of interest</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>exp_match <span class="ot">&lt;-</span> <span class="fu">setdiff</span>(<span class="fu">names</span>(anifood), <span class="st">&quot;case&quot;</span>)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co"># variables to be excluded from matching for each exposure</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="co"># both exp_var and rm_vars are character variables</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>excl_vars <span class="sc">%&gt;%</span> head</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   exp_var            rm_vars</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1   exp01             exp09 </span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2   exp09       exp24 exp27 </span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3   exp27 exp43 exp45 exp50</span></span></code></pre></div>
+</div>
+<div id="establish-a-threshold-for-distance" class="section level2">
+<h2>2. Establish a threshold for distance</h2>
+<p>The first step is to establish a proper distance threshold for
+matching. If too loose, there will be poor confounding control; if too
+tight, it will be difficult to find enough controls for the cases due to
+overmatching.</p>
+<p>The <code>get_threshold</code> function uses the maximum bipartite
+graph algorithm to find each case’s closest control while ensuring each
+control is used no more than once. Then, for each case, a control is
+selected randomly.</p>
+<p>A logistic regression on whether the control is the closest or the
+randomly selected one based on the distance is created. By default, the
+threshold used is the distance at which the probability is at least 50%
+that the control is the closest vs. a randomly selected one (see the
+plot below generated by the function <code>threshold_model_plot</code>).
+You can choose a different probability with the <code>p_threshold</code>
+argument.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>threshold_results <span class="ot">&lt;-</span> <span class="fu">get_threshold</span>(anifood, exp_match, <span class="at">p_threshold =</span> <span class="fl">0.50</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; case</span></span></code></pre></div>
+<p>The <code>distance_density_plot</code> function plots the density
+distribution of Gower distances for the maximum bipartite graph
+algorithm matches (solid line), the density distribution of distances
+for the random matches (dashed line), and the threshold (red dashed
+line). As expected, a maximum bipartite graph algorithm matching results
+in closer matching than a random matching.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">distance_density_plot</span>(threshold_results) <span class="sc">+</span> <span class="fu">ggtitle</span>(<span class="st">&quot;Example of distance_density_plot&quot;</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>The function <code>threshold_model_plot</code> plots the probability
+of being the maximum bipartite graph algorithm match vs. a random one by
+distance. It also plots the threshold for distance corresponding to a
+probability specified through the <code>p_threshold</code> argument.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">threshold_model_plot</span>(threshold_results, <span class="at">p_threshold =</span> <span class="fl">0.50</span>) <span class="sc">+</span> <span class="fu">ggtitle</span>(<span class="st">&quot;Example of threshold_model_plot&quot;</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>This package can also be used to analyze data from a case-control
+study that was originally matched. The
+<code>original_compare_plot</code> function makes a density plot of the
+distance for originally matched pairs. It also gives the proportion of
+originally matched pairs that have a distance greater than the
+threshold.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># create a variable (i.e., pair) indicating originally matched pairs</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>anifood_matched <span class="ot">&lt;-</span> anifood <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(case) <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">pair =</span> <span class="fu">seq_along</span>(case)) <span class="sc">%&gt;%</span> ungroup</span></code></pre></div>
+<p>In this example, 84% of original matched case-control pairs have a
+distance greater than the threshold.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> <span class="fu">original_compare_plot</span>(anifood_matched, case, pair, threshold_results)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="co"># the density plot of distance between originally matched cases and controls</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>p<span class="sc">$</span>plot_density <span class="sc">+</span> <span class="fu">ggtitle</span>(<span class="st">&quot;Example of original_compare_plot&quot;</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="co"># proportion of originally matched cases and controls with a distance greater than the threshold</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>p<span class="sc">$</span>prop_distance_gt_threshold</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; .</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;     FALSE      TRUE </span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 0.1627907 0.8372093</span></span></code></pre></div>
+</div>
+<div id="create-strata-candidate-matches-for-final-analysis" class="section level2">
+<h2>3. Create strata: candidate matches for final analysis</h2>
+<p>The <code>make_knn_strata</code> function calculates Gower distances,
+by default, for pairs formed by every case and every control for a given
+exposure and creates strata by selecting the closest 250 controls for
+each case (by default, can be modified through the <code>ncntls</code>
+argument). Thus, for that exposure, the number of rows in data frame
+equals the number of cases * 251. The data frames for all exposures are
+stored in a list with a length equal to
+<code>length(exp_interest)</code>.</p>
+<p>This step can be computationally intensive depending on the amount of
+data. <code>furrr::future_map()</code> can be used so that the
+computation can be easily adjusted to use multiple cores on your local
+computer or a high-performance computing (HPC). More information is
+provided <a href="#run-the-analysis-on-your-local-computer-or-hpc">below</a>.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(furrr)</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>strata1 <span class="ot">&lt;-</span> <span class="fu">future_map</span>(exp_interest, make_knn_strata,  <span class="at">rmvars =</span> excl_vars, <span class="at">matchvars =</span> exp_match, <span class="at">df =</span> anifood) <span class="sc">%&gt;%</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">setNames</span>(exp_interest)</span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">length</span>(strata1) <span class="sc">==</span> <span class="fu">length</span>(exp_interest)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="co"># rows in a matched data set</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="fu">all.equal</span>(anifood <span class="sc">%&gt;%</span> <span class="fu">filter</span>(case <span class="sc">==</span> <span class="dv">1</span>) <span class="sc">%&gt;%</span> NROW <span class="sc">%&gt;%</span> <span class="st">`</span><span class="at">*</span><span class="st">`</span>(<span class="dv">250</span> <span class="sc">+</span> <span class="dv">1</span>), <span class="fu">NROW</span>(strata1[[<span class="dv">1</span>]]))</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
+<p>In the <code>make_knn_strata</code> function, a data frame should be
+supplied to the <code>rmvars</code> argument (see <code>excl_vars</code>
+above). That data frame should include two variables: <em>exp_var: a
+character variable (only a single exposure in a row), and </em>rm_vars:
+a character variable that contains the names of the variables that are
+not adjusted for. Names are separated by a space.</p>
+</div>
+<div id="prepare-final-matched-sets-for-analysis" class="section level2">
+<h2>4. Prepare final matched sets for analysis</h2>
+<p>For a given exposure, the <code>make_analysis_set</code> function
+selects the closest 20 controls for each case; subset these 20 to those
+that fall within the threshold; collapse strata that share the same
+controls; and remove strata without any control.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>strata2 <span class="ot">&lt;-</span> <span class="fu">future_map</span>(exp_interest, make_analysis_set, <span class="at">stratified_data =</span> strata1, <span class="at">data =</span> anifood, <span class="at">maxdist =</span> threshold_results<span class="sc">$</span>threshold) <span class="sc">%&gt;%</span> <span class="fu">setNames</span>(exp_interest)</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; exp01</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; exp09</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; exp27</span></span></code></pre></div>
+<p>The <code>finalize_data</code> function ensures that a control
+retained in a data frame is used once; removes strata without any case
+or any control. In this process, priority is given to the smallest
+strata then smallest distance if a control is matched to multiple cases
+(i.e., that control exists in multiple strata).</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>strata3 <span class="ot">&lt;-</span> <span class="fu">finalize_data</span>(strata2)</span></code></pre></div>
+<p>The last step is to exclude exposures, if any, with odds ratios that
+are not estimable (e.g., none of cases and controls was exposed). For
+example, <code>exp09</code> in this example.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># exposures to which neither cases nor controls were exposed</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>strata3 <span class="sc">%&gt;%</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">lapply</span>(<span class="cf">function</span>(dfm) dfm <span class="sc">%&gt;%</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>                            <span class="fu">mutate</span>(<span class="at">case =</span> <span class="fu">as.character</span>(case), <span class="at">exp =</span> <span class="fu">as.character</span>(exp)) <span class="sc">%&gt;%</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>                            <span class="fu">filter</span>(case <span class="sc">!=</span> <span class="st">&quot;&quot;</span> <span class="sc">&amp;</span> exp <span class="sc">!=</span> <span class="st">&quot;&quot;</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>                            <span class="fu">with</span>(<span class="fu">table</span>(case, exp))) <span class="sc">%&gt;%</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">lapply</span>(<span class="cf">function</span>(x) x<span class="sc">==</span><span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">lapply</span>(<span class="cf">function</span>(x) {sum <span class="ot">=</span> <span class="fu">sum</span>(x); length <span class="ot">=</span> <span class="fu">length</span>(x); <span class="fu">cbind</span>(sum, length)}) <span class="sc">%&gt;%</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">do.call</span>(rbind,.) <span class="sc">%&gt;%</span></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>  as.data.frame <span class="sc">%&gt;%</span></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">var =</span> <span class="fu">names</span>(strata3)) <span class="sc">%&gt;%</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(sum <span class="sc">&gt;=</span> <span class="dv">2</span> <span class="sc">|</span> length <span class="sc">&lt;</span> <span class="dv">4</span>) <span class="sc">%&gt;%</span> <span class="fu">select</span>(var) <span class="sc">%&gt;%</span></span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>  unclass <span class="sc">%&gt;%</span></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>  unlist <span class="ot">-&gt;</span> expvars_invalid</span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>expvars_invalid</span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; character(0)</span></span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a><span class="co"># none exposed and odds ratio cannot be estimated</span></span>
+<span id="cb14-20"><a href="#cb14-20" aria-hidden="true" tabindex="-1"></a>strata3[[<span class="st">&quot;exp09&quot;</span>]] <span class="sc">%&gt;%</span> <span class="fu">with</span>(<span class="fu">table</span>(case, exp))</span>
+<span id="cb14-21"><a href="#cb14-21" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;     exp</span></span>
+<span id="cb14-22"><a href="#cb14-22" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; case   0   1</span></span>
+<span id="cb14-23"><a href="#cb14-23" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    0 236   0</span></span>
+<span id="cb14-24"><a href="#cb14-24" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    1 231   1</span></span>
+<span id="cb14-25"><a href="#cb14-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-26"><a href="#cb14-26" aria-hidden="true" tabindex="-1"></a>data_final <span class="ot">&lt;-</span> strata3[<span class="fu">setdiff</span>(<span class="fu">names</span>(strata3), expvars_invalid)]</span></code></pre></div>
+</div>
+<div id="calculate-odds-ratios" class="section level2">
+<h2>5. Calculate odds ratios</h2>
+<div id="mantelhaenszel-test-and-fishers-exact-test" class="section level3">
+<h3>5.1 Mantel–Haenszel test and Fisher’s exact test</h3>
+<p>The <code>test_mh</code> function performs the Mantel–Haenszel test
+for data frame with more than one stratum and the Fisher’s exact test
+for a data frame with only one stratum.</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>or_mh <span class="ot">&lt;-</span> <span class="fu">future_map</span>(data_final, <span class="cf">function</span>(dfm) <span class="fu">with</span>(dfm, <span class="fu">test_mh</span>(<span class="at">case =</span> case, <span class="at">exp =</span> exp, <span class="at">strata =</span> strata)))</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>or_mh[[<span class="st">&quot;exp01&quot;</span>]]</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $p.value</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] 0.727695</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $conf.int</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] 0.7440193 1.5998105</span></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; attr(,&quot;conf.level&quot;)</span></span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] 0.95</span></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $estimate</span></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; common odds ratio </span></span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;          1.091004 </span></span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $null.value</span></span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; common odds ratio </span></span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;                 1 </span></span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $alternative</span></span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;two.sided&quot;</span></span>
+<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $method</span></span>
+<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;Mantel-Haenszel chi-squared test with continuity correction&quot;</span></span>
+<span id="cb15-25"><a href="#cb15-25" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb15-26"><a href="#cb15-26" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $data.name</span></span>
+<span id="cb15-27"><a href="#cb15-27" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;case and exp and strata&quot;</span></span></code></pre></div>
+<p>However, when the number of exposed is small, this method may yield
+an infinite result.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>data_final[[<span class="st">&quot;exp27&quot;</span>]] <span class="sc">%&gt;%</span> <span class="fu">select</span>(case, exp) <span class="sc">%&gt;%</span> table</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;     exp</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; case   0   1</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    0 236   0</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    1 231   1</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>or_mh[[<span class="st">&quot;exp27&quot;</span>]]</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $p.value</span></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] 0.9698768</span></span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $conf.int</span></span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] NaN NaN</span></span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; attr(,&quot;conf.level&quot;)</span></span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] 0.95</span></span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $estimate</span></span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; common odds ratio </span></span>
+<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;               Inf </span></span>
+<span id="cb16-19"><a href="#cb16-19" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb16-20"><a href="#cb16-20" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $null.value</span></span>
+<span id="cb16-21"><a href="#cb16-21" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; common odds ratio </span></span>
+<span id="cb16-22"><a href="#cb16-22" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;                 1 </span></span>
+<span id="cb16-23"><a href="#cb16-23" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb16-24"><a href="#cb16-24" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $alternative</span></span>
+<span id="cb16-25"><a href="#cb16-25" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;two.sided&quot;</span></span>
+<span id="cb16-26"><a href="#cb16-26" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb16-27"><a href="#cb16-27" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $method</span></span>
+<span id="cb16-28"><a href="#cb16-28" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;Mantel-Haenszel chi-squared test with continuity correction&quot;</span></span>
+<span id="cb16-29"><a href="#cb16-29" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb16-30"><a href="#cb16-30" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $data.name</span></span>
+<span id="cb16-31"><a href="#cb16-31" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] &quot;case and exp and strata&quot;</span></span></code></pre></div>
+</div>
+<div id="conditional-logistic-regression" class="section level3">
+<h3>5.2 Conditional logistic regression</h3>
+<p>Conditional logistic regression gives results similar to those from
+Mantel–Haenszel test, but may also give less than ideal results when few
+participants are exposed.</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>results_clogit <span class="ot">&lt;-</span> <span class="fu">future_map</span>(data_final, <span class="cf">function</span>(dfm){<span class="fu">clogit</span>(case <span class="sc">~</span> exp <span class="sc">+</span> <span class="fu">strata</span>(strata) , <span class="at">data =</span> dfm)}) </span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>results_clogit[[<span class="st">&quot;exp27&quot;</span>]] <span class="sc">%&gt;%</span> <span class="fu">summary</span>() <span class="sc">%&gt;%</span> <span class="st">`</span><span class="at">$</span><span class="st">`</span>(conf.int)</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;      exp(coef)   exp(-coef) lower .95 upper .95</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; exp1  11766455 8.498736e-08         0       Inf</span></span></code></pre></div>
+</div>
+<div id="penalized-logistic-regression" class="section level3">
+<h3>5.3 Penalized logistic regression</h3>
+<p>When the number of participants being exposed is small, <a href="https://CRAN.R-project.org/package=logistf/index.html">Firth’s
+bias-Reduced penalized-likelihood logistic regression</a> can be used
+(1).</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># regression coefficients</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>coef_logistf <span class="ot">&lt;-</span> <span class="fu">future_map</span>(data_final, <span class="cf">function</span>(dfm){</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span>(<span class="fu">length</span>(<span class="fu">unique</span>(dfm[[<span class="st">&quot;strata&quot;</span>]])) <span class="sc">==</span> <span class="dv">1</span>) {</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>        x <span class="ot">&lt;-</span> <span class="fu">model.matrix</span>(case <span class="sc">~</span> exp, <span class="at">data =</span> dfm)</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>        plconf <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;exp&quot;</span>, <span class="fu">colnames</span>(x))</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>        o <span class="ot">&lt;-</span> <span class="fu">logistf</span>(case <span class="sc">~</span> exp, <span class="at">data =</span> dfm, <span class="at">plconf =</span> plconf, <span class="at">dataout =</span> <span class="cn">FALSE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>                 <span class="st">`</span><span class="at">[</span><span class="st">`</span>(<span class="fu">c</span>(<span class="st">&quot;terms&quot;</span>, <span class="st">&quot;coefficients&quot;</span>, <span class="st">&quot;ci.lower&quot;</span>, <span class="st">&quot;ci.upper&quot;</span>, <span class="st">&quot;prob&quot;</span>))</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>    } <span class="cf">else</span> {</span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>        x <span class="ot">&lt;-</span> <span class="fu">model.matrix</span>(case <span class="sc">~</span> exp <span class="sc">+</span> strata, <span class="at">data =</span> dfm)</span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>        plconf <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">&quot;exp&quot;</span>, <span class="fu">colnames</span>(x))</span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>        o <span class="ot">&lt;-</span> <span class="fu">logistf</span>(case <span class="sc">~</span> exp <span class="sc">+</span> strata, <span class="at">data =</span> dfm, <span class="at">plconf =</span> plconf, <span class="at">dataout =</span> <span class="cn">FALSE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>                 <span class="st">`</span><span class="at">[</span><span class="st">`</span>(<span class="fu">c</span>(<span class="st">&quot;terms&quot;</span>, <span class="st">&quot;coefficients&quot;</span>, <span class="st">&quot;ci.lower&quot;</span>, <span class="st">&quot;ci.upper&quot;</span>, <span class="st">&quot;prob&quot;</span>))</span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a>},</span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a><span class="at">.progress =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a><span class="co"># odds ratios</span></span>
+<span id="cb18-20"><a href="#cb18-20" aria-hidden="true" tabindex="-1"></a>or_logistf <span class="ot">&lt;-</span> <span class="fu">lapply</span>(<span class="fu">names</span>(coef_logistf), <span class="cf">function</span>(var_name){</span>
+<span id="cb18-21"><a href="#cb18-21" aria-hidden="true" tabindex="-1"></a>  coef_logistf[[var_name]] <span class="sc">%&gt;%</span></span>
+<span id="cb18-22"><a href="#cb18-22" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">[</span><span class="st">`</span>(<span class="fu">c</span>(<span class="st">&quot;terms&quot;</span>, <span class="st">&quot;coefficients&quot;</span>, <span class="st">&quot;ci.lower&quot;</span>, <span class="st">&quot;ci.upper&quot;</span>, <span class="st">&quot;prob&quot;</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb18-23"><a href="#cb18-23" aria-hidden="true" tabindex="-1"></a>    bind_cols <span class="sc">%&gt;%</span></span>
+<span id="cb18-24"><a href="#cb18-24" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(<span class="fu">grepl</span>(<span class="st">&quot;exp&quot;</span>, terms)) <span class="sc">%&gt;%</span></span>
+<span id="cb18-25"><a href="#cb18-25" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">variable =</span> var_name, <span class="at">or =</span> <span class="fu">exp</span>(coefficients), <span class="at">ci.lower =</span> <span class="fu">exp</span>(ci.lower), <span class="at">ci.upper =</span> <span class="fu">exp</span>(ci.upper)) <span class="sc">%&gt;%</span></span>
+<span id="cb18-26"><a href="#cb18-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(variable, terms, or, ci.lower, ci.upper, prob)}) <span class="sc">%&gt;%</span></span>
+<span id="cb18-27"><a href="#cb18-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">setNames</span>(<span class="fu">names</span>(coef_logistf))</span>
+<span id="cb18-28"><a href="#cb18-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-29"><a href="#cb18-29" aria-hidden="true" tabindex="-1"></a><span class="co"># odds ratio for exp27</span></span>
+<span id="cb18-30"><a href="#cb18-30" aria-hidden="true" tabindex="-1"></a>or_logistf[[<span class="st">&quot;exp27&quot;</span>]] </span>
+<span id="cb18-31"><a href="#cb18-31" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 1 x 6</span></span>
+<span id="cb18-32"><a href="#cb18-32" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   variable terms    or ci.lower ci.upper  prob</span></span>
+<span id="cb18-33"><a href="#cb18-33" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;    &lt;chr&gt; &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt; &lt;dbl&gt;</span></span>
+<span id="cb18-34"><a href="#cb18-34" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 exp27    exp1   3.30    0.172     486. 0.434</span></span></code></pre></div>
+</div>
+</div>
+<div id="calculate-population-attributable-fraction-paf" class="section level2">
+<h2>6. Calculate population attributable fraction (PAF)</h2>
+<p>PAF can be estimated using the method described by Bruzzi and
+colleagues (2). We implemented this method in <code>get_paf</code>.</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="co"># prepare a data frame for calculating PAF</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>df_or <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(or_logistf)</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>df_or</span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 3 x 6</span></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   variable terms    or ci.lower ci.upper  prob</span></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;    &lt;chr&gt; &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt; &lt;dbl&gt;</span></span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 exp01    exp1   1.09    0.744     1.60 0.656</span></span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2 exp09    exp1   3.54    0.182   523.   0.408</span></span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3 exp27    exp1   3.30    0.172   486.   0.434</span></span></code></pre></div>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co"># point estimate of PAF</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>paf <span class="ot">&lt;-</span> <span class="fu">get_paf</span>(<span class="at">df_or =</span> df_or, <span class="at">which_or =</span> or, <span class="at">exp_var =</span> variable, <span class="at">exp_level =</span> terms, <span class="at">df_matched =</span> data_final)</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>paf</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 3 x 2</span></span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    paf_or variable</span></span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;     &lt;dbl&gt; &lt;chr&gt;   </span></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 0.0549  exp01   </span></span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2 0.00309 exp09   </span></span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3 0.00300 exp27</span></span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a><span class="co"># lower confidence limit of PAF</span></span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>paf_ci.lower <span class="ot">&lt;-</span> <span class="fu">get_paf</span>(<span class="at">df_or =</span> df_or, <span class="at">which_or =</span> ci.lower, <span class="at">exp_var =</span> variable, <span class="at">exp_level =</span> terms, <span class="at">df_matched =</span> data_final)</span></code></pre></div>
+</div>
+<div id="multiple-imputation-of-missingness" class="section level2">
+<h2>7. Multiple imputation of missingness</h2>
+<p>When the case-control data contains a large proportion of
+missingness, multiple imputation may be useful.</p>
+<ul>
+<li><p>For regression coefficients generated by Mantel–Haenszel test or
+conditional logistic regression, Rubin’s rule may be proper for
+combining the results (3).</p></li>
+<li><p>For Firth’s bias-Reduced penalized-likelihood logistic
+regression, the regression coefficients are not normally distributed.
+The results from imputed data sets should be combined using penalized
+likelihood profiles (4). Penalized likelihood profiles are implemented
+in <code>logistf::CLIP.confint()</code>, but the function was developed
+to combine results from imputed data sets that have the same structure.
+However, if we impute the original case-control data, and then apply
+nearest-neighbors matching to the imputed data, the final analytic data
+sets for a given exposure could have inconsistent structures because
+they could have different numbers of strata.</p></li>
+</ul>
+<p>Thus, we modified the <code>logistf::CLIP.confint()</code> to
+accommodate our method. The modified function is included in the
+<code>nncc</code> package and is called
+<code>CLIP.confint.difflevel()</code>. Please cite the original paper
+(4) and/or the <a href="https://CRAN.R-project.org/package=logistf/index.html">logistf
+package</a> if you use this modified function for publication.</p>
+</div>
+<div id="helper-function-cacheit" class="section level2">
+<h2>8. Helper function <code>cacheit()</code></h2>
+<p>When the number of exposures of interest or the sample size of the
+original case-control study is large, it may be time-consuming for some
+analyses (e.g., strata creation). You may not want to have the same code
+evaluated again when you run your analysis later. The helper function
+<code>cacheit()</code> caches the results for you. Specifically, before
+your run <code>cacheit()</code>, create a folder named “cache” in the
+working directory of your project. When you run
+<code>cacheit(&quot;abc&quot;, code)</code> for the first time, it saves the
+results of your code as abc.rds in the <code>cache</code> folder; next
+time, when you run the code, it directly read the saved results in
+without evaluating your code.</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>strata1 <span class="ot">&lt;-</span> <span class="fu">cacheit</span>(<span class="st">&quot;abc&quot;</span>,</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>                   <span class="fu">future_map</span>(exp_interest, make_knn_strata,  <span class="at">rmvars =</span> excl_vars, <span class="at">matchvars =</span> exp_match, <span class="at">df =</span> anifood) <span class="sc">%&gt;%</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">setNames</span>(exp_interest),</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">clearcache =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+</div>
+<div id="run-the-analysis-on-your-local-computer-or-hpc" class="section level2">
+<h2>9. Run the analysis on your local computer or HPC</h2>
+<p>Considering the intensive computation for this approach, especially
+when multiple imputation is conducted, a <a href="https://CRAN.R-project.org/package=future/vignettes/future-1-overview.html">future</a>
+can be used to accelerate the analysis. Below we briefly introduce the
+use of futures on your local multi-core computer and HPC.</p>
+<div id="local-computer" class="section level3">
+<h3>9.1 local computer</h3>
+<p>If you have a multi-core computer, the following code can assign a
+specified number of cores for the analysis.</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(nncc)</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(furrr)</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(future.batchtools)</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a><span class="co"># the workers argument is used to define the number of cores for the analysis. By default, all cores will be used.</span></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a><span class="fu">plan</span>(multisession, <span class="at">workers =</span> <span class="dv">3</span>)</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>strata1 <span class="ot">&lt;-</span> <span class="fu">future_map</span>(exp_interest, make_knn_strata,  <span class="at">rmvars =</span> excl_vars, <span class="at">matchvars =</span> exp_match, <span class="at">df =</span> anifood) <span class="sc">%&gt;%</span></span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">setNames</span>(exp_interest)</span></code></pre></div>
+</div>
+<div id="hpc" class="section level3">
+<h3>9.2 HPC</h3>
+<p>To run futures on HPC, you may need a template file, a job script,
+and a R script. The template file and the job script are created using a
+Linux application such as nano and saved as .sh files.</p>
+<p>There are some exemplary template files <a href="https://github.com/mllg/batchtools/tree/master/inst/templates">here</a>.
+The template file should be saved as <code>batchtools.sge.tmpl</code> in
+your current working directory or as <code>.batchtools.sge.tmpl</code>
+in your home directory on the HPC. Below is an example of a template
+file for Sun Grid Engine.</p>
+<pre><code>#!/bin/bash
+
+## name of the job
+#$ -N &lt;%= job.name %&gt;
+
+## tell the queue system to use the current directory as the working directory
+## Or else the script may fail as it will execute in your top level home directory /home/username
+#$ -cwd
+
+## Use environment variables
+#$ -V
+
+## specify a queue
+#$ -q &lt;%= resources$queue %&gt;
+
+## free to add other modules if necessary
+module load R/3.6.2
+
+Rscript -e &#39;batchtools::doJobCollection(&quot;&lt;%= uri %&gt;&quot;)&#39;
+exit 0</code></pre>
+<p>Below is an example of a job script to be submitted to the scheduler
+through a shell:</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co">#!/bin/bash -l</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="co"># name of the job is helloR</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="co">#$ -N helloR</span></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a><span class="co">#$ -cwd</span></span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a><span class="co">#$ -V</span></span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a><span class="co">#$ -pe smp 2-12</span></span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a><span class="co">#$ -q all.q</span></span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true" tabindex="-1"></a>module load R<span class="sc">/</span><span class="dv">3</span>.<span class="fl">6.2</span></span>
+<span id="cb24-15"><a href="#cb24-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-16"><a href="#cb24-16" aria-hidden="true" tabindex="-1"></a><span class="co"># to execute fugure-map.R</span></span>
+<span id="cb24-17"><a href="#cb24-17" aria-hidden="true" tabindex="-1"></a>Rscript future<span class="sc">-</span>map.R</span>
+<span id="cb24-18"><a href="#cb24-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-19"><a href="#cb24-19" aria-hidden="true" tabindex="-1"></a>exit <span class="dv">0</span></span></code></pre></div>
+<p>The R code looks like:</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(furrr)</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(future.batchtools)</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a><span class="fu">plan</span>(batchtools_sge)</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a><span class="fu">future_map</span>(<span class="sc">&lt;</span>a_list_or_vector<span class="sc">&gt;</span>, <span class="cf">function</span>(x){...}, <span class="at">.progress =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+</div>
+<div id="references" class="section level3">
+<h3>References:</h3>
+<ol style="list-style-type: decimal">
+<li>Firth D. Bias reduction of maximum likelihood estimates. Biometrika
+1993;80:27-38.</li>
+<li>Bruzzi P, Green SB, Byar DP, et al. Estimating the population
+attributable risk for multiple risk factors using case-control data. Am
+J Epidemiol 1985;122(5):904-14.</li>
+<li>Rubin DB. Multiple imputation for nonresponse in surveys. New York:
+John Wiley and Sons; 1987.</li>
+<li>Heinze G, Ploner M, Beyea J. Confidence intervals after multiple
+imputation: combining profile likelihood information from logistic
+regressions. Stat Med 2013;32(29):5062-76.</li>
+</ol>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

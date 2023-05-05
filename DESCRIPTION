@@ -1,6 +1,6 @@
 Package: nncc
 Title: Nearest Neighbors Matching of Case-Control Data
-Version: 1.0.0
+Version: 1.0.1
 Authors@R: c(person("Beau", "Bruce", email = "lue7@cdc.gov", role = c("aut", "cre")),
              person("Zhaohui", "Cui", email = "nyv5@cdc.gov", role = c("aut")),
              person("Georg", "Heinze", role="cph", comment = "Author of included logistf package"),
@@ -20,7 +20,7 @@ RoxygenNote: 7.2.1
 Suggests: rmarkdown, knitr, future, future.batchtools, survival
 VignetteBuilder: knitr
 NeedsCompilation: yes
-Packaged: 2022-08-29 13:35:08 UTC; lue7
+Packaged: 2023-05-04 23:10:23 UTC; lue7
 Author: Beau Bruce [aut, cre],
   Zhaohui Cui [aut],
   Georg Heinze [cph] (Author of included logistf package),
@@ -28,4 +28,4 @@ Author: Beau Bruce [aut, cre],
   Lena Jiricka [cph] (Author of included logistf package)
 Maintainer: Beau Bruce <lue7@cdc.gov>
 Repository: CRAN
-Date/Publication: 2022-08-30 13:00:02 UTC
+Date/Publication: 2023-05-05 08:20:11 UTC

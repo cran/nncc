@@ -1,11 +1,8 @@
 Package: nncc
 Title: Nearest Neighbors Matching of Case-Control Data
-Version: 1.0.1
+Version: 2.0.0
 Authors@R: c(person("Beau", "Bruce", email = "lue7@cdc.gov", role = c("aut", "cre")),
-             person("Zhaohui", "Cui", email = "nyv5@cdc.gov", role = c("aut")),
-             person("Georg", "Heinze", role="cph", comment = "Author of included logistf package"),
-             person("Meinhard", "Ploner", role="cph", comment = "Author of included logistf package"),
-             person("Lena", "Jiricka", role="cph", comment = "Author of included logistf package")
+             person("Zhaohui", "Cui", email = "nyv5@cdc.gov", role = c("aut"))
              )
 Description: Provides nearest-neighbors matching and 
     analysis of case-control data. Cui, Z., Marder, E. P., Click, E. S., 
@@ -14,18 +11,15 @@ Depends: R (>= 3.3.2)
 License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
-Imports: dplyr, furrr, tidyr, igraph, ggplot2, cluster, rlang, mgcv,
-        stats, formula.tools, mice
-RoxygenNote: 7.2.1
-Suggests: rmarkdown, knitr, future, future.batchtools, survival
+Imports: dplyr, furrr, tidyr, igraph, ggplot2, cluster, rlang, stats
+RoxygenNote: 7.2.3
+Suggests: rmarkdown, knitr, future, future.batchtools, logistf, mice,
+        survival
 VignetteBuilder: knitr
-NeedsCompilation: yes
-Packaged: 2023-05-04 23:10:23 UTC; lue7
+NeedsCompilation: no
+Packaged: 2024-01-11 13:40:27 UTC; lue7
 Author: Beau Bruce [aut, cre],
-  Zhaohui Cui [aut],
-  Georg Heinze [cph] (Author of included logistf package),
-  Meinhard Ploner [cph] (Author of included logistf package),
-  Lena Jiricka [cph] (Author of included logistf package)
+  Zhaohui Cui [aut]
 Maintainer: Beau Bruce <lue7@cdc.gov>
 Repository: CRAN
-Date/Publication: 2023-05-05 08:20:11 UTC
+Date/Publication: 2024-01-11 14:10:02 UTC

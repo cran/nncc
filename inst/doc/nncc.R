@@ -1,4 +1,4 @@
-## ---- include = FALSE---------------------------------------------------------
+## ----include = FALSE----------------------------------------------------------
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
@@ -6,7 +6,7 @@ knitr::opts_chunk$set(
   fig.height=4
 )
 
-## ---- warning=FALSE, message=FALSE--------------------------------------------
+## ----warning=FALSE, message=FALSE---------------------------------------------
 library(nncc)
 library(survival)
 library(dplyr)
@@ -30,7 +30,7 @@ excl_vars %>% head
 ## -----------------------------------------------------------------------------
 threshold_results <- get_threshold(anifood, exp_match, p_threshold = 0.50)
 
-## ---- warning=FALSE-----------------------------------------------------------
+## ----warning=FALSE------------------------------------------------------------
 distance_density_plot(threshold_results) + ggtitle("Example of distance_density_plot")
 
 ## -----------------------------------------------------------------------------
@@ -50,21 +50,21 @@ p$plot_density + ggtitle("Example of original_compare_plot")
 # proportion of originally matched cases and controls with a distance greater than the threshold
 p$prop_distance_gt_threshold
 
-## ---- warning=FALSE, message=FALSE--------------------------------------------
+## ----warning=FALSE, message=FALSE---------------------------------------------
 library(furrr)
 strata1 <- future_map(exp_interest, make_knn_strata,  rmvars = excl_vars, matchvars = exp_match, df = anifood) %>%
   setNames(exp_interest)
 
-## ---- warning=FALSE-----------------------------------------------------------
+## ----warning=FALSE------------------------------------------------------------
 length(strata1) == length(exp_interest)
 
 # rows in a matched data set
 all.equal(anifood %>% filter(case == 1) %>% NROW %>% `*`(250 + 1), NROW(strata1[[1]]))
 
-## ---- warning = FALSE---------------------------------------------------------
+## ----warning = FALSE----------------------------------------------------------
 strata2 <- future_map(exp_interest, make_analysis_set, stratified_data = strata1, data = anifood, maxdist = threshold_results$threshold) %>% setNames(exp_interest)
 
-## ---- message=FALSE-----------------------------------------------------------
+## ----message=FALSE------------------------------------------------------------
 strata3 <- finalize_data(strata2)
 
 ## -----------------------------------------------------------------------------
@@ -100,12 +100,30 @@ data_final[["exp27"]] %>% select(case, exp) %>% table
 
 or_mh[["exp27"]]
 
-## ---- warning=FALSE-----------------------------------------------------------
+## ----warning=FALSE------------------------------------------------------------
 results_clogit <- future_map(data_final, function(dfm){clogit(case ~ exp + strata(strata) , data = dfm)}) 
 
 results_clogit[["exp27"]] %>% summary() %>% `$`(conf.int)
 
-## ---- warning=FALSE-----------------------------------------------------------
+## ----warning=FALSE, eval=FALSE------------------------------------------------
+#  library(rstanarm)
+#  
+#  results_stan_clogit <- future_map(data_final, function(dfm) {
+#    dfm$strata <- factor(dfm$strata)
+#    stan_clogit(case ~ exp,
+#                data = dfm,
+#                strata = strata,
+#                # rstanarm suggests us specifying priors even if they are the
+#                # defaults because they might change in the future
+#                prior = normal(0, 4),
+#                #default: prior = normal(autoscale = TRUE),
+#                prior_covariance = decov(),
+#                iter = 100,
+#                chains = 2,
+#                prior_PD = FALSE)}) # for speed only
+
+## ----warning=FALSE------------------------------------------------------------
+library(logistf)
 # regression coefficients
 coef_logistf <- future_map(data_final, function(dfm){
 
@@ -144,7 +162,7 @@ df_or <- bind_rows(or_logistf)
 
 df_or
 
-## ---- message=FALSE-----------------------------------------------------------
+## ----message=FALSE------------------------------------------------------------
 # point estimate of PAF
 paf <- get_paf(df_or = df_or, which_or = or, exp_var = variable, exp_level = terms, df_matched = data_final)
 
@@ -153,13 +171,13 @@ paf
 # lower confidence limit of PAF
 paf_ci.lower <- get_paf(df_or = df_or, which_or = ci.lower, exp_var = variable, exp_level = terms, df_matched = data_final)
 
-## ---- eval = FALSE------------------------------------------------------------
+## ----eval = FALSE-------------------------------------------------------------
 #  strata1 <- cacheit("abc",
 #                     future_map(exp_interest, make_knn_strata,  rmvars = excl_vars, matchvars = exp_match, df = anifood) %>%
 #    setNames(exp_interest),
 #    clearcache = FALSE)
 
-## ---- eval = FALSE------------------------------------------------------------
+## ----eval = FALSE-------------------------------------------------------------
 #  library(nncc)
 #  library(dplyr)
 #  library(furrr)
@@ -171,7 +189,7 @@ paf_ci.lower <- get_paf(df_or = df_or, which_or = ci.lower, exp_var = variable, 
 #    setNames(exp_interest)
 #  
 
-## ---- eval=FALSE, comment = ""------------------------------------------------
+## ----eval=FALSE, comment = ""-------------------------------------------------
 #  #!/bin/bash -l
 #  
 #  # name of the job is helloR
@@ -192,7 +210,7 @@ paf_ci.lower <- get_paf(df_or = df_or, which_or = ci.lower, exp_var = variable, 
 #  
 #  exit 0
 
-## ---- eval=FALSE--------------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  library(furrr)
 #  library(future.batchtools)
 #  
